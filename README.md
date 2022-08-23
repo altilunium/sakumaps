@@ -29,7 +29,7 @@ Export data from Google Map and store locally in pocketmap
 ![image](https://user-images.githubusercontent.com/70379302/186135322-c70b7f31-4f44-4b11-b7d2-f732d5ad47be.png)
 1. Open Pocketmap by using Chromium-based browser. Right click anywhere, click developer tools.
 2. Click "application" tab, click "indexedDB" pane.
-3. You can modify or delete your data here.
+3. You can delete your data here.
 
 ### Hide The Basemap
 Sometimes you just want to see the spatial distribution of your collected coordinates data, without distractions. Press `Ctrl+,` to hide the basemap. Press it once more to show it back.
