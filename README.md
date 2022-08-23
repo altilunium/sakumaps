@@ -1,4 +1,4 @@
-# saku.maps
+# sakumaps
 Manage your saved coordinates locally
 
 https://user-images.githubusercontent.com/70379302/186137469-16d3ec98-22c5-46e5-b63a-65b0174ac5c1.mp4
