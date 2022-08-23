@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pocketmap</title>
+    <link rel="icon" href="logo.png" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="leaflet.css" />
+    <script src="leaflet.js"></script>
+    
+
+<style>
+@font-face {
+    font-family: 'Noto';
+    font-style: normal;
+    font-weight: normal;
+    src: local('Open Sans Regular'),url('r/noto.woff2') format('woff');
+}
+
+
+html,body,#mapid {
+height: 100%;
+width: 100%;
+left:0px;
+position: fixed;
+top:0px;
+}	
+
+img {
+    width : 300px;
+}
+
+#titl{
+	width: 70px;
+    height:70px;
+    border-radius: 90px;
+	position: fixed;
+	right:20px;
+	bottom:20px;
+	background-color: #3232e6;
+    z-index: 30;	
+}
+
+#titl2{
+	width: 70px;
+    height:70px;
+    border-radius: 90px;
+	position: fixed;
+	left:20px;
+	bottom:20px;
+	background-color:red;
+    z-index: 30;
+    display: none;	
+}
+
+.ppp{
+  display: fixed;
+}
+
+#tw{
+    position:fixed;
+    margin:0 auto;
+    background-color: white;
+    width:100%;
+    height:100%;
+    z-index: 20;
+    top:0px;
+    left:0px;
+    display:none;
+   
+}
+
+#main-txtbox{
+    width: 95%;
+    border: 0px;
+    padding-left: 5%;
+    overflow: hidden;
+    resize: none;
+    font-family: 'Noto';
+    color: #1A1A1B;
+    font-size: 14px;
+    line-height: 21px;
+    font-weight: 400;
+    padding-bottom: 500px;
+    margin-top: 47px;
+    max-width: 750px;
+
+}
+
+#main-txtbox:focus-visible{
+    outline: none;
+}
+
+</style>
+</head>
+<body>
+<div id="titl" onclick="bc()"></div>
+<div id="titl2" onclick="bc2()"></div>
+<div id="tw"><div id="main-txtbox" contenteditable></div></div>
+    
+<div id="mapid"></div>
+
+
+
+<script src="dexie.js"></script>
+<script>
+
+
+var db = new Dexie("mapDB");
+db.version(1).stores({
+    places: "++id, lat,lon,usr,syn",
+    mapState: "++k, lat,lon,z"
+});
+
+db.version(2).stores({
+    places: "++id, lat,lon,usr,syn",
+    mapState: "++k, lat,lon,z"
+}).upgrade()
+
+
+
+var vid = "";	
+
+// Initialize the agent at application startup.
+const fpPromise = new Promise((resolve, reject) => {
+  const script = document.createElement('script')
+  script.onload = resolve
+  script.onerror = reject
+  script.async = true
+  script.src = 'fp.js'
+  document.head.appendChild(script)
+})
+  .then(() => FingerprintJS.load())
+
+// Get the visitor identifier when you need it.
+fpPromise
+  .then(fp => fp.get())
+  .then(result => {
+    // This is the visitor identifier:
+    const visitorId = result.visitorId
+    console.log(visitorId)
+    vid = visitorId;
+    
+  })
+
+
+
+    var bu = document.getElementById("titl");
+    var bu2 = document.getElementById("titl2");
+    var tx = document.getElementById("tw")
+    var state = 1;
+    var x_lat;
+    var x_lon;
+    var x_usr;
+   
+//State Machine    
+function bc(){
+    bu.style.backgroundColor = "red" 
+    if (state == 1){
+        bu.style.backgroundColor = "red" 
+        state = 2
+        return;
+    }
+    if (state == 2){
+        bu.style.backgroundColor = "blue"
+        state = 1 
+        return;
+    }
+    if (state == 3){
+        state = 4
+        tx.style.display = "block"
+        var txx = document.getElementById("main-txtbox");
+        setTimeout(function() {
+            txx.focus();
+        }, 0);
+        bu.style.backgroundColor = "green"
+    return;
+    }
+    if (state == 4){
+        s()
+    }
+}
+
+//Save
+async function s()   {
+  	var twit = document.getElementById("main-txtbox").innerHTML;
+  	if (twit.length > 0) {
+  		document.getElementById("main-txtbox").innerHTML = "";
+
+db.transaction("rw", db.places, function*(){
+    var p = yield db.places.add({
+        lat: x_lat,
+        lon: x_lon,
+        usr: vid,
+        syn:twit 
+    })
+})
+
+
+
+
+  ref()
+  bc2()
+  }
+}
+
+
+
+
+
+
+var map = L.map('mapid',{ zoomControl: false }).setView({lat: -2.811371193331128, lng:  113.64257812500001},5)
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+maxZoom: 19,
+attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+}).addTo(map);
+
+
+L.control.scale().addTo(map);
+
+async function setFocus(){
+    db.transaction("rw",db.mapState, function*(){
+    var points = yield db.mapState.where({k:1}).first();
+    if (points){
+        map.setView({lat:points.lat, lng:points.lon},points.z)
+    }
+
+
+    console.log("HEAAA!")
+    console.log(points)
+    console.log("BRUH")
+    })
+}
+
+
+setFocus()
+
+
+
+
+// Place points
+async function ref() {
+
+  db.transaction("rw",db.places, function*(){
+    var points = yield db.places.toArray()
+    console.log(points)
+
+    for (var i= points.length-1; i>=0 ; i--){
+        var ttag = points[i].syn
+        var fColor = ""
+
+        switch(ttag) {
+            case "base":
+            fColor = "red";
+            break;
+            case "musholla":
+            fColor = "green";
+            break;
+            case "masjid":
+            fColor ="green";
+            break;
+            default :
+            fColor = "blue"
+
+        }
+
+        var c = L.circle([points[i].lat,points[i].lon],{
+            radius : 2,
+            fillColor : fColor,
+            color : fColor,
+            fillOpacity : 0.5
+        }).on('click',markClick).addTo(map);
+        c.bindPopup(points[i].syn)
+    }
+
+  })
+
+async function markClick(e){
+    console.log(e)
+}
+
+  
+
+ 
+
+
+}
+
+ref()
+
+
+      
+
+
+var tempPos
+map.on('click', function(e) {
+    if (state == 3){
+     map.removeLayer(tempPos);
+     state = 2;   
+    }
+
+    if (state == 2 ){
+        x_lat = e.latlng.lat;
+        x_lon = e.latlng.lng;
+        console.log(e.latlng.lat,e.latlng.lng);
+        tempPos = L.circle([e.latlng.lat,e.latlng.lng], {
+            color: 'blue',
+            fillColor: 'blue',
+            fillOpacity: 0.5,
+            radius: 2
+        })
+
+        tempPos.addTo(map);
+        bu.style.backgroundColor = "green"
+        state = 3 
+        bu2.style.display = "block"
+    }
+})
+
+
+map.on('zoomend',function(e) {
+   console.log(e.target.getCenter());
+   console.log(e.target.getZoom());
+   //db.friends.put({id: 4, name: "Foo", age: 33});
+
+
+//mapState: "++k, lat,lon,z"
+db.transaction("rw", db.mapState, function*(){
+    var p = yield db.mapState.put({
+        k:1,
+        lat: e.target.getCenter().lat,
+        lon : e.target.getCenter().lng,
+        z : e.target.getZoom()
+    })
+})
+
+
+})
+
+function bc2(){
+    map.removeLayer(tempPos);
+    state = 1;
+    bu.style.backgroundColor = "blue"
+    bu2.style.display = "none"
+    tx.style.display = "none"
+
+
+}
+
+var isMapShown = true
+
+document.onkeyup = function(e) {
+    console.log(e)
+    if (e.ctrlKey && e.which == 190) {
+        var lonlat = prompt("Enter coordinate");
+        lonlat = lonlat.split(",")
+        console.log(lonlat)
+        map.setView(lonlat)
+        x_lat = lonlat[0]
+        x_lon = lonlat[1]
+        tempPos = L.circle([lonlat[0],lonlat[1]], {
+            color: 'blue',
+            fillColor: 'blue',
+            fillOpacity: 0.5,
+            radius: 10
+        })
+        tempPos.addTo(map);
+        state = 3;
+        bu2.style.display = "block"
+    }
+    else if(e.ctrlKey && e.which == 188){
+        var x = document.getElementsByClassName("leaflet-layer")
+        if (isMapShown){
+            x[0].style.display = "none"
+            isMapShown = false
+        }
+        else {
+            x[0].style.display = "block"
+            isMapShown = true
+        }
+        
+    }
+}
+
+     
+
+
+    
+
+
+</script>
+</body>
+</html>
+
+
+
