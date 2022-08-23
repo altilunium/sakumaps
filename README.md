@@ -1,4 +1,4 @@
-# pocketmap
+# saku.maps
 Manage your saved coordinates locally
 
 https://user-images.githubusercontent.com/70379302/186137469-16d3ec98-22c5-46e5-b63a-65b0174ac5c1.mp4
@@ -19,7 +19,7 @@ I want to save coordinates data, whether it's places that i've visited or someon
 5. Click the green button to save
 
 ### Add New Coordinate by using (Lat,Lon) data
-Export data from Google Map and store locally in pocketmap
+Export data from Google Map and store locally in sakumaps
 
 ![image](https://user-images.githubusercontent.com/70379302/186134095-547d3cce-ed7c-452f-a576-b7b488405e5f.png)
 1. Open Google Maps, find your place, right click, click the coordinate data. Your (lat,lon) data will be copied to clipboard
@@ -28,7 +28,7 @@ Export data from Google Map and store locally in pocketmap
 
 ### Manage The Database
 ![image](https://user-images.githubusercontent.com/70379302/186135322-c70b7f31-4f44-4b11-b7d2-f732d5ad47be.png)
-1. Open Pocketmap by using Chromium-based browser. Right click anywhere, click developer tools.
+1. Open sakumaps by using Chromium-based browser. Right click anywhere, click developer tools.
 2. Click "application" tab, click "indexedDB" pane.
 3. You can delete your data here.
 
