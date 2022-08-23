@@ -39,4 +39,4 @@ Different color for different type of coordinates? Sure. Just modify the `async 
 
 ## Tech Stacks
 1. [Leaflet.js](https://leafletjs.com) : Basemap renderer, add new point
-2. [Dexie.js] (https://dexie.org) : IndexedDB Wrapper
+2. [Dexie.js](https://dexie.org) : IndexedDB Wrapper
