@@ -18,7 +18,7 @@ I want to save coordinates data, whether it's places that i've visited or someon
 5. Click the green button to save
 
 ### Add New Coordinate by using (Lat,Lon) data
-OSM basemap is sometimes unsatisfactory, 
+Export data from Google Map and store locally in pocketmap
 
 ![image](https://user-images.githubusercontent.com/70379302/186134095-547d3cce-ed7c-452f-a576-b7b488405e5f.png)
 1. Open Google Maps, find your place, right click, click the coordinate data. Your (lat,lon) data will be copied to clipboard
