@@ -1,10 +1,9 @@
 # pocketmap
-
-![](src.png)
+Manage your saved coordinates locally
 
 https://user-images.githubusercontent.com/70379302/186137469-16d3ec98-22c5-46e5-b63a-65b0174ac5c1.mp4
 
-Manage your saved coordinates locally
+
 
 
 ## Problem
@@ -34,6 +33,7 @@ Export data from Google Map and store locally in pocketmap
 3. You can delete your data here.
 
 ### Hide The Basemap
+![](src.png)
 Sometimes you just want to see the spatial distribution of your collected coordinates data, without distractions. Press `Ctrl+,` to hide the basemap. Press it once more to show it back.
 
 ### Advanced Custom Styling
