@@ -33,3 +33,10 @@ Export data from Google Map and store locally in pocketmap
 
 ### Hide The Basemap
 Sometimes you just want to see the spatial distribution of your collected coordinates data, without distractions. Press `Ctrl+,` to hide the basemap. Press it once more to show it back.
+
+### Advanced Custom Styling
+Different color for different type of coordinates? Sure. Just modify the `async function ref()` source code. 
+
+## Tech Stacks
+1. [Leaflet.js](https://leafletjs.com) : Basemap renderer, add new point
+2. [Dexie.js] (https://dexie.org) : IndexedDB Wrapper
