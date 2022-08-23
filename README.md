@@ -22,6 +22,14 @@ Export data from Google Map and store locally in pocketmap
 
 ![image](https://user-images.githubusercontent.com/70379302/186134095-547d3cce-ed7c-452f-a576-b7b488405e5f.png)
 1. Open Google Maps, find your place, right click, click the coordinate data. Your (lat,lon) data will be copied to clipboard
-2. Open Pocketmap, press Ctrl+. , paste your (lat,lon) data.
+2. Open Pocketmap, press `Ctrl+.` , paste your (lat,lon) data.
 3. Click the blue button and proceed as usual
 
+### Manage The Database
+![image](https://user-images.githubusercontent.com/70379302/186135322-c70b7f31-4f44-4b11-b7d2-f732d5ad47be.png)
+1. Open Pocketmap by using Chromium-based browser. Right click anywhere, click developer tools.
+2. Click "application" tab, click "indexedDB" pane.
+3. You can modify or delete your data here.
+
+### Hide The Basemap
+Sometimes you just want to see the spatial distribution of your collected coordinates data, without distractions. Press `Ctrl+,` to hide the basemap. Press it once more to show it back.
