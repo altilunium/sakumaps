@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Map Notes App</title>
+    <link rel="icon" href="https://altilunium.github.io/sakumaps/logo.png" type="image/x-icon">
+    <title>Sakumaps v2</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; }
@@ -83,13 +84,59 @@
         let currentLat, currentLng;
         let editingNoteId = null;
         let isGPSFollowing = false;
+        const STORAGE_KEYS = {
+            NOTES: 'mapNotes',
+            MAP_STATE: 'mapState'
+        };
+
+        // Load notes from localStorage
+        function loadNotes() {
+            const savedNotes = localStorage.getItem(STORAGE_KEYS.NOTES);
+            if (savedNotes) {
+                notes = JSON.parse(savedNotes);
+                notes.forEach(note => addNoteToMap(note));
+            }
+        }
+
+        // Save notes to localStorage
+        function saveNotesToStorage() {
+            localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes));
+        }
+
+        // Save map state to localStorage
+        function saveMapState() {
+            const center = map.getCenter();
+            const state = {
+                lat: center.lat,
+                lng: center.lng,
+                zoom: map.getZoom()
+            };
+            localStorage.setItem(STORAGE_KEYS.MAP_STATE, JSON.stringify(state));
+        }
+
+        // Load map state from localStorage
+        function loadMapState() {
+            const savedState = localStorage.getItem(STORAGE_KEYS.MAP_STATE);
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                return state;
+            }
+            return { lat: 0, lng: 0, zoom: 2 }; // Default values
+        }
 
         // Initialize map
         function initMap() {
-            map = L.map('map').setView([0, 0], 2);
+            const initialState = loadMapState();
+            map = L.map('map').setView([initialState.lat, initialState.lng], initialState.zoom);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
+
+            // Add map move event listener
+            map.on('moveend', saveMapState);
+
+            // Load saved notes
+            loadNotes();
 
             // Add click event to map
             map.on('click', function(e) {
@@ -188,6 +235,7 @@
                     note.properties.description = noteText;
                     note.properties.updatedAt = new Date().toISOString();
                     updateNoteMarker(note);
+                    saveNotesToStorage();
                 }
             } else {
                 // Create new note
@@ -206,6 +254,7 @@
                 };
                 notes.push(newNote);
                 addNoteToMap(newNote);
+                saveNotesToStorage();
             }
             
             closeNoteForm();
@@ -221,6 +270,7 @@
                         map.removeLayer(layer);
                     }
                 });
+                saveNotesToStorage();
             }
             closeNoteForm();
         }
@@ -232,7 +282,7 @@
             marker.noteId = note.id;
             
             marker.bindPopup(`
-                <strong>Created:</strong> ${new Date(note.properties.createdAt).toLocaleString()}<br>
+                <strong>Created:</strong> ${formatDate(note.properties.createdAt)}<br>
                 <strong>Note:</strong> ${note.properties.description}<br>
                 <button onclick="editNote('${note.id}')">Edit</button>
             `);
@@ -243,8 +293,8 @@
             map.eachLayer((layer) => {
                 if (layer.noteId === note.id) {
                     layer.setPopupContent(`
-                        <strong>Created:</strong> ${new Date(note.properties.createdAt).toLocaleString()}<br>
-                        <strong>Updated:</strong> ${new Date(note.properties.updatedAt).toLocaleString()}<br>
+                        <strong>Created:</strong> ${formatDate(note.properties.createdAt)}<br>
+                        <strong>Updated:</strong> ${formatDate(note.properties.updatedAt)}<br>
                         <strong>Note:</strong> ${note.properties.description}<br>
                         <button onclick="editNote('${note.id}')">Edit</button>
                     `);
@@ -263,6 +313,23 @@
             }
         }
 
+        // Format date to custom string
+        function formatDate(date) {
+            const d = new Date(date);
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            const day = d.getDate();
+            const month = months[d.getMonth()];
+            const year = d.getFullYear();
+            const hours = d.getHours().toString().padStart(2, '0');
+            const minutes = d.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'pm' : 'am';
+            const displayHours = hours % 12 || 12;
+
+            return `${day} ${month} ${year}, ${displayHours}.${minutes}${ampm}`;
+        }
+
         // Export notes as GeoJSON
         function exportNotes() {
             const geojson = {
@@ -270,11 +337,12 @@
                 features: notes
             };
             
+            const timestamp = formatDate(new Date());
             const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'map-notes.geojson';
+            a.download = `map-notes-${timestamp}.geojson`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -289,7 +357,8 @@
             if (isGPSFollowing) {
                 gpsButton.classList.add('active');
                 if (userMarker) {
-                    map.panTo(userMarker.getLatLng());
+                    const pos = userMarker.getLatLng();
+                    map.setView(pos, 17); // Zoom level 17 for better street-level detail
                 }
             } else {
                 gpsButton.classList.remove('active');
