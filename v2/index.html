@@ -20,6 +20,27 @@
             display: none;
             z-index: 1000;
         }
+        .gps-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .gps-button.active {
+            background: #4CAF50;
+            color: white;
+        }
         .controls {
             position: fixed;
             top: 10px;
@@ -38,6 +59,12 @@
         <button onclick="exportNotes()">Export GeoJSON</button>
     </div>
     
+    <button class="gps-button" onclick="toggleGPSFollow()" title="Focus on GPS location">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+        </svg>
+    </button>
+    
     <div id="noteForm" class="note-form">
         <h3>Add/Edit Note</h3>
         <input type="hidden" id="noteId">
@@ -55,6 +82,7 @@
         let notes = [];
         let currentLat, currentLng;
         let editingNoteId = null;
+        let isGPSFollowing = false;
 
         // Initialize map
         function initMap() {
@@ -103,11 +131,29 @@
                     const lng = position.coords.longitude;
                     
                     if (!userMarker) {
-                        userMarker = L.marker([lat, lng]).addTo(map);
+                        // Create a custom GPS marker icon
+                        const gpsIcon = L.divIcon({
+                            className: 'gps-marker',
+                            html: `
+                                <div style="
+                                    width: 20px;
+                                    height: 20px;
+                                    background: #4285F4;
+                                    border-radius: 50%;
+                                    border: 3px solid white;
+                                    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                                "></div>
+                            `,
+                            iconSize: [26, 26],
+                            iconAnchor: [13, 13]
+                        });
+                        userMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
                         map.setView([lat, lng], 15);
                     } else {
                         userMarker.setLatLng([lat, lng]);
-                        map.panTo([lat, lng]);
+                        if (isGPSFollowing) {
+                            map.panTo([lat, lng]);
+                        }
                     }
                 },
                 function(error) {
@@ -233,6 +279,21 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+
+        // Toggle GPS following
+        function toggleGPSFollow() {
+            isGPSFollowing = !isGPSFollowing;
+            const gpsButton = document.querySelector('.gps-button');
+            
+            if (isGPSFollowing) {
+                gpsButton.classList.add('active');
+                if (userMarker) {
+                    map.panTo(userMarker.getLatLng());
+                }
+            } else {
+                gpsButton.classList.remove('active');
+            }
         }
 
         // Initialize the map when page loads
