@@ -52,13 +52,99 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.2);
             z-index: 1000;
         }
+        .menu-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            background: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .menu-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 50px;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            padding: 10px;
+            min-width: 200px;
+        }
+        .menu-content button {
+            display: block;
+            width: 100%;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .menu-content button:hover {
+            background: #f0f0f0;
+        }
+        .menu-content.show {
+            display: block;
+        }
+        .record-active {
+            color: #ff4444 !important;
+        }
+        #notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            z-index: 1000;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <div class="controls">
-        <button onclick="exportNotes()">Export GeoJSON</button>
+        <button class="menu-button" onclick="toggleMenu()" title="Menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+            </svg>
+        </button>
+        <div id="menuContent" class="menu-content">
+            <button onclick="exportNotes()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 8px">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                </svg>
+                Export GeoJSON
+            </button>
+            <button onclick="importGeoJSON()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 8px">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" transform="rotate(180 12 12)"/>
+                </svg>
+                Import GeoJSON
+            </button>
+            <button onclick="toggleRecording()" id="recordButton">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 8px">
+                    <circle cx="12" cy="12" r="8"/>
+                </svg>
+                Record GPS Movement
+            </button>
+            <button onclick="clearAllData()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 8px">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                </svg>
+                Clear All Data
+            </button>
+        </div>
     </div>
+
+    <div id="notification"></div>
     
     <button class="gps-button" onclick="toggleGPSFollow()" title="Focus on GPS location">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -84,9 +170,12 @@
         let currentLat, currentLng;
         let editingNoteId = null;
         let isGPSFollowing = false;
+        let isRecording = false;
+        let gpsTrack = [];
         const STORAGE_KEYS = {
             NOTES: 'mapNotes',
-            MAP_STATE: 'mapState'
+            MAP_STATE: 'mapState',
+            GPS_TRACKS: 'gpsTracks'
         };
 
         // Load notes from localStorage
@@ -94,7 +183,13 @@
             const savedNotes = localStorage.getItem(STORAGE_KEYS.NOTES);
             if (savedNotes) {
                 notes = JSON.parse(savedNotes);
-                notes.forEach(note => addNoteToMap(note));
+                notes.forEach(note => {
+                    if (note.geometry && note.geometry.type === 'LineString' && note.properties && note.properties.gpsTrack) {
+                        addGPSTrackNote(note);
+                    } else {
+                        addNoteToMap(note);
+                    }
+                });
             }
         }
 
@@ -127,9 +222,10 @@
         // Initialize map
         function initMap() {
             const initialState = loadMapState();
-            map = L.map('map').setView([initialState.lat, initialState.lng], initialState.zoom);
+            map = L.map('map', { maxZoom: 22 }).setView([initialState.lat, initialState.lng], initialState.zoom);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 22
             }).addTo(map);
 
             // Add map move event listener
@@ -364,6 +460,225 @@
                 gpsButton.classList.remove('active');
             }
         }
+
+        // Show notification
+        function showNotification(message, duration = 3000) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, duration);
+        }
+
+        // Toggle menu
+        function toggleMenu() {
+            const menuContent = document.getElementById('menuContent');
+            menuContent.classList.toggle('show');
+        }
+
+        // Clear all data
+        function clearAllData() {
+            if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
+                localStorage.clear();
+                notes = [];
+                gpsTrack = [];
+                map.eachLayer((layer) => {
+                    if (layer.noteId) {
+                        map.removeLayer(layer);
+                    }
+                });
+                showNotification('All data has been cleared');
+            }
+        }
+
+        // Add GPS track as a special note
+        function addGPSTrackNote(trackGeojson) {
+            // Add to notes array
+            notes.push(trackGeojson);
+            // Show on map with special style
+            L.geoJSON(trackGeojson, {
+                style: {
+                    color: '#ff4444',
+                    weight: 4,
+                    opacity: 0.9
+                }
+            }).addTo(map).bindPopup(
+                `<strong>GPS Track</strong><br>${trackGeojson.properties.name || ''}<br>Points: ${trackGeojson.geometry.coordinates.length}`
+            );
+        }
+
+        // Import GeoJSON
+        function importGeoJSON() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.geojson';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const geojson = JSON.parse(e.target.result);
+                        let featuresCount = 0;
+                        let notesCount = 0;
+
+                        if (geojson.type === 'FeatureCollection') {
+                            geojson.features.forEach(feature => {
+                                addGeoJSONFeatureToMap(feature);
+                                featuresCount++;
+                                if (feature.properties && feature.properties.description) {
+                                    notesCount++;
+                                }
+                            });
+                        } else if (geojson.type === 'Feature') {
+                            addGeoJSONFeatureToMap(geojson);
+                            featuresCount = 1;
+                            if (geojson.properties && geojson.properties.description) {
+                                notesCount = 1;
+                            }
+                        } else {
+                            throw new Error('Invalid GeoJSON: must be a Feature or FeatureCollection');
+                        }
+
+                        saveNotesToStorage(); // Save only the notes
+                        showNotification(`Imported ${featuresCount} features (${notesCount} notes)`);
+                    } catch (err) {
+                        console.error('Error importing GeoJSON:', err);
+                        showNotification(`Error importing GeoJSON: ${err.message}`);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        // Toggle GPS recording
+        function toggleRecording() {
+            isRecording = !isRecording;
+            const recordButton = document.getElementById('recordButton');
+            
+            if (isRecording) {
+                recordButton.classList.add('record-active');
+                gpsTrack = [];
+                if (userMarker) {
+                    const pos = userMarker.getLatLng();
+                    gpsTrack.push({
+                        timestamp: new Date().toISOString(),
+                        coords: [pos.lng, pos.lat]
+                    });
+                }
+            } else {
+                recordButton.classList.remove('record-active');
+                if (gpsTrack.length > 0) {
+                    const trackGeojson = {
+                        type: "Feature",
+                        id: `track-${Date.now()}`,
+                        geometry: {
+                            type: "LineString",
+                            coordinates: gpsTrack.map(p => p.coords)
+                        },
+                        properties: {
+                            gpsTrack: true,
+                            name: `Track ${formatDate(new Date())}`,
+                            timestamps: gpsTrack.map(p => p.timestamp),
+                            createdAt: new Date().toISOString(),
+                            updatedAt: new Date().toISOString()
+                        }
+                    };
+                    addGPSTrackNote(trackGeojson);
+                    saveNotesToStorage();
+                    showNotification('GPS track saved');
+                }
+            }
+        }
+
+        // Update GPS track when location changes
+        function updateGPSTrack(lat, lng) {
+            if (isRecording) {
+                gpsTrack.push({
+                    timestamp: new Date().toISOString(),
+                    coords: [lng, lat]
+                });
+            }
+        }
+
+        // Modified startTracking function to include GPS tracking
+        const originalStartTracking = startTracking;
+        startTracking = function() {
+            watchId = navigator.geolocation.watchPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    if (!userMarker) {
+                        const gpsIcon = L.divIcon({
+                            className: 'gps-marker',
+                            html: `
+                                <div style="
+                                    width: 20px;
+                                    height: 20px;
+                                    background: #4285F4;
+                                    border-radius: 50%;
+                                    border: 3px solid white;
+                                    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                                "></div>
+                            `,
+                            iconSize: [26, 26],
+                            iconAnchor: [13, 13]
+                        });
+                        userMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
+                        map.setView([lat, lng], 15);
+                    } else {
+                        userMarker.setLatLng([lat, lng]);
+                        if (isGPSFollowing) {
+                            map.panTo([lat, lng]);
+                        }
+                    }
+                    
+                    // Update GPS track if recording
+                    updateGPSTrack(lat, lng);
+                },
+                function(error) {
+                    console.error("Error tracking location:", error);
+                    showNotification('Error tracking location');
+                },
+                { enableHighAccuracy: true }
+            );
+        };
+
+        // Modify export function to show notification
+        const originalExportNotes = exportNotes;
+        exportNotes = function() {
+            const timestamp = formatDate(new Date());
+            const filename = `map-notes-${timestamp}.geojson`;
+            
+            const geojson = {
+                type: "FeatureCollection",
+                features: notes
+            };
+            
+            const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification(`${filename} has been downloaded`);
+            toggleMenu(); // Close menu after export
+        };
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('menuContent');
+            const menuButton = document.querySelector('.menu-button');
+            if (!menu.contains(event.target) && !menuButton.contains(event.target)) {
+                menu.classList.remove('show');
+            }
+        });
 
         // Initialize the map when page loads
         window.onload = initMap;
